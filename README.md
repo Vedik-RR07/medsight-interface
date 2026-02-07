@@ -1,73 +1,42 @@
-# Welcome to your Lovable project
+# MedSight
 
-## Project info
+**Multi-Agent Intelligence for Medical Research & Care**
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+MedSight is a frontend interface for searching, synthesizing, and reasoning across medical literature using collaborative AI agents. It aims to improve on single-model systems by using multiple specialized agents that cross-verify results and surface confidence, citations, and ethical considerations.
 
-## How can I edit this code?
+## What it does
 
-There are several ways of editing your application.
+- **Research** — Search and synthesize medical literature (PubMed, trials, systematic reviews) with citation tracking and conflict detection.
+- **Clinical reasoning** — Step-by-step differential diagnosis and evidence-based reasoning with explicit assumptions and uncertainty.
+- **Data visualization** — Interactive charts for outcomes, risk, and population data.
+- **Patient care** — Plain-language summaries and discussion points for patient communication.
+- **Ethics & bias** — Analysis of bias, population representation, and ethical issues in research and recommendations.
 
-**Use Lovable**
+The app provides a **Dashboard** for running medical queries, an **Agent Explorer** to learn about each agent’s role and limitations, **Results** views for synthesized outputs, **Patient Care** tools for summaries and talking points, and **Saved Research** for bookmarked work.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Vite** + **TypeScript** + **React**
+- **React Router** for routing
+- **TanStack Query** for server state
+- **shadcn/ui** + **Tailwind CSS** for UI
+- **Framer Motion** for animations
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Runs the app at [http://localhost:8080](http://localhost:8080).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Scripts
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Command        | Description              |
+|----------------|--------------------------|
+| `npm run dev`  | Start development server |
+| `npm run build`| Production build         |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint               |
+| `npm run test` | Run tests                |
