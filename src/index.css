@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 240 27% 5.5%;
+    --foreground: 240 10% 92%;
+
+    --card: 240 20% 8%;
+    --card-foreground: 240 10% 92%;
+
+    --popover: 240 20% 8%;
+    --popover-foreground: 240 10% 92%;
+
+    --primary: 247 100% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 258 97% 74%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 15% 14%;
+    --muted-foreground: 240 10% 55%;
+
+    --accent: 247 80% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 15% 18%;
+    --input: 240 15% 14%;
+    --ring: 247 100% 68%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 240 22% 7%;
+    --sidebar-foreground: 240 10% 85%;
+    --sidebar-primary: 247 100% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 15% 12%;
+    --sidebar-accent-foreground: 240 10% 85%;
+    --sidebar-border: 240 15% 15%;
+    --sidebar-ring: 247 100% 68%;
+
+    /* Custom tokens */
+    --glow-purple: 247 100% 68%;
+    --glow-purple-soft: 258 97% 74%;
+    --glass-bg: 240 20% 10% / 0.6;
+    --glass-border: 240 15% 30% / 0.3;
+    --confidence-high: 142 76% 36%;
+    --confidence-medium: 45 93% 47%;
+    --confidence-low: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-xl border border-white/10 rounded-xl;
+  }
+
+  .glass-panel-strong {
+    @apply bg-card/80 backdrop-blur-2xl border border-white/15 rounded-xl;
+  }
+
+  .glow-border {
+    @apply border border-primary/30 shadow-[0_0_20px_hsl(247_100%_68%/0.15)];
+  }
+
+  .glow-text {
+    @apply text-primary drop-shadow-[0_0_12px_hsl(247_100%_68%/0.5)];
+  }
+
+  .glow-button {
+    @apply bg-primary/20 border border-primary/50 text-primary-foreground
+           hover:bg-primary/30 hover:border-primary/70 hover:shadow-[0_0_30px_hsl(247_100%_68%/0.3)]
+           transition-all duration-300;
+  }
+
+  .glow-button-solid {
+    @apply bg-primary text-primary-foreground
+           hover:bg-primary/90 hover:shadow-[0_0_40px_hsl(247_100%_68%/0.4)]
+           transition-all duration-300;
+  }
+
+  .ghost-button {
+    @apply bg-transparent border border-foreground/30 text-foreground
+           hover:border-foreground/60 hover:bg-foreground/5
+           transition-all duration-300;
+  }
+
+  .gradient-bg {
+    background: radial-gradient(ellipse at 50% 0%, hsl(247 100% 68% / 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, hsl(258 97% 74% / 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 80%, hsl(247 100% 68% / 0.05) 0%, transparent 50%),
+                hsl(var(--background));
+  }
+
+  .agent-pulse {
+    animation: agent-pulse 3s ease-in-out infinite;
+  }
+
+  .confidence-bar {
+    @apply h-3 rounded-full;
+  }
+
+  .nav-link-active {
+    @apply bg-primary/15 text-primary border-l-2 border-primary;
+  }
+
+  .search-bar {
+    @apply glass-panel-strong px-6 py-4 text-lg w-full focus-within:glow-border transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+  }
+}
+
+@keyframes agent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(247 100% 68% / 0.2); }
+  50% { box-shadow: 0 0 20px 4px hsl(247 100% 68% / 0.15); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
