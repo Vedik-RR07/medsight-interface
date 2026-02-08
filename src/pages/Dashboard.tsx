@@ -1,18 +1,31 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AgentSidebar from "@/components/AgentSidebar";
+import { analyzeSearch } from "@/lib/api";
 
 const Dashboard = () => {
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleSearch = () => {
-    if (query.trim()) {
-      navigate("/results/research?q=" + encodeURIComponent(query));
+  const handleSearch = async (queryOverride?: string) => {
+    const q = (queryOverride ?? query).trim();
+    if (!q) return;
+    if (!queryOverride) setQuery(q);
+    setError(null);
+    setAnalyzing(true);
+    try {
+      const result = await analyzeSearch({ query: q });
+      navigate("/results/research?q=" + encodeURIComponent(q), { state: { analysis: result } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Analysis failed. Is the backend running on port 3001?");
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -49,14 +62,33 @@ const Dashboard = () => {
                 <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
               </button>
               <button
-                onClick={handleSearch}
-                className="glow-button-solid px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2"
+                onClick={() => void handleSearch()}
+                disabled={analyzing}
+                className="glow-button-solid px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Sparkles className="w-4 h-4" />
-                Analyze
+                {analyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Agents analyzing…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Analyze
+                  </>
+                )}
               </button>
             </div>
 
+            {error && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm text-destructive mt-2"
+              >
+                {error}
+              </motion.p>
+            )}
             {showFilters && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -94,7 +126,7 @@ const Dashboard = () => {
                 ].map((search) => (
                   <button
                     key={search}
-                    onClick={() => { setQuery(search); navigate("/results/research?q=" + encodeURIComponent(search)); }}
+                    onClick={() => { setQuery(search); void handleSearch(search); }}
                     className="w-full text-left px-4 py-3 rounded-lg bg-muted/30 hover:bg-muted/60 text-sm text-foreground/80 transition flex items-center gap-3"
                   >
                     <Search className="w-3.5 h-3.5 text-muted-foreground" />

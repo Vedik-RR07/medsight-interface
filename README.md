@@ -16,7 +16,8 @@ The app provides a **Dashboard** for running medical queries, an **Agent Explore
 
 ## Tech stack
 
-- **Vite** + **TypeScript** + **React**
+- **Vite** + **TypeScript** + **React** (frontend, port 5173 or 8080)
+- **Node** + **Express** + **TypeScript** (backend, port 3001)
 - **React Router** for routing
 - **TanStack Query** for server state
 - **shadcn/ui** + **Tailwind CSS** for UI
@@ -24,12 +25,26 @@ The app provides a **Dashboard** for running medical queries, an **Agent Explore
 
 ## Getting started
 
+**Frontend**
+
 ```sh
 npm install
 npm run dev
 ```
 
-Runs the app at [http://localhost:8080](http://localhost:8080).
+Runs the app at [http://localhost:5173](http://localhost:5173) (or 8080).
+
+**Backend** (required for search and agent analysis)
+
+```sh
+cd backend
+cp .env.example .env
+# Edit .env and set GEMINI_API_KEY (required). Optionally: PUBMED_API_KEY, OPENALEX_EMAIL, SUPABASE_*.
+npm install
+npm run dev
+```
+
+Backend runs at [http://localhost:3001](http://localhost:3001). Use `GET /health` to verify. The frontend calls `POST /analyze` with the search query and optional patient parameters.
 
 ## Scripts
 
