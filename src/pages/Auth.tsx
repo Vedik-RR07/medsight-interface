@@ -13,24 +13,31 @@ const Auth = () => {
     searchParams.get("mode") === "signin" ? "signin" : "signup"
   );
   const [role, setRole] = useState<string>("researcher");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  
+  // Separate state for sign-up form
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [signUpPassword, setSignUpPassword] = useState("");
+  
+  // Separate state for sign-in form
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  
   const [loading, setLoading] = useState(false);
 
   const roles = ["Clinician", "Researcher", "Student"];
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
+    if (!signUpEmail.trim() || !signUpPassword) {
       toast.error("Please enter email and password");
       return;
     }
-    if (password.length < 6) {
+    if (signUpPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
     setLoading(true);
-    const { error } = await signUp(email.trim(), password, role);
+    const { error } = await signUp(signUpEmail.trim(), signUpPassword, role);
     setLoading(false);
     if (error) {
       toast.error(error.message);
@@ -38,7 +45,7 @@ const Auth = () => {
     }
     toast.success("Check your email to confirm your account");
     setMode("signin");
-    setPassword("");
+    setSignUpPassword("");
   };
 
   const handleGoogleSignIn = async () => {
@@ -53,12 +60,12 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
+    if (!signInEmail.trim() || !signInPassword) {
       toast.error("Please enter email and password");
       return;
     }
     setLoading(true);
-    const { error } = await signIn(email.trim(), password);
+    const { error } = await signIn(signInEmail.trim(), signInPassword);
     setLoading(false);
     if (error) {
       toast.error(error.message);
@@ -97,16 +104,16 @@ const Auth = () => {
               <input
                 type="email"
                 placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={signUpEmail}
+                onChange={(e) => setSignUpEmail(e.target.value)}
                 autoComplete="email"
                 className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition"
               />
               <input
                 type="password"
                 placeholder="Password (min 6 characters)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={signUpPassword}
+                onChange={(e) => setSignUpPassword(e.target.value)}
                 autoComplete="new-password"
                 className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition"
               />
@@ -177,16 +184,16 @@ const Auth = () => {
               <input
                 type="email"
                 placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={signInEmail}
+                onChange={(e) => setSignInEmail(e.target.value)}
                 autoComplete="email"
                 className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition"
               />
               <input
                 type="password"
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={signInPassword}
+                onChange={(e) => setSignInPassword(e.target.value)}
                 autoComplete="current-password"
                 className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition"
               />

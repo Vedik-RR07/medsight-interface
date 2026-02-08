@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Download, AlertTriangle, CheckCircle, BookOpen, FlaskConical, BarChart3, Heart, ShieldCheck, Loader2 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Navbar from "@/components/Navbar";
 import AgentSidebar from "@/components/AgentSidebar";
 import ConfidenceBar from "@/components/ConfidenceBar";
@@ -125,156 +126,179 @@ const Results = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                {agentTitles[agentId] || "Analysis"}
-              </h1>
-              <p className="text-muted-foreground mb-4">{analysis.query}</p>
-              
-              {/* Display selected mode */}
-              <div className="mb-6">
-                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                  analysis.mode === 'clinical' 
-                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-800 border border-gray-300'
-                }`}>
-                  {analysis.mode === 'clinical' ? '🏥 Clinical Mode' : '🔬 Research Mode'}
-                </span>
-              </div>
-
-              {/* Safety-First Components - Always displayed first */}
-              <SafetyBanner 
-                safetyTier={safety.safetyTier} 
-                summary={safety.plainLanguageSummary} 
-              />
-
-              {safety.clinicalAlerts.length > 0 && (
-                <ClinicalAlerts alerts={safety.clinicalAlerts} />
-              )}
-
-              {safety.demographicGaps.length > 0 && (
-                <DemographicGapsDisplay gaps={safety.demographicGaps} />
-              )}
-
-              {safety.alternativeOptions.length > 0 && (
-                <AlternativeOptions alternatives={safety.alternativeOptions} />
-              )}
-
-              {s.patientExplanation && (
-                <PatientExplanation explanation={s.patientExplanation} />
-              )}
-
-              {/* Recommendation Section - Conditionally rendered based on safety tier */}
-              {isSuppressed ? (
-                <GlassCard className="mb-6 bg-red-50 border-red-300">
-                  <div className="flex items-center gap-3 mb-3">
-                    <AlertTriangle className="text-red-600" size={24} />
-                    <h2 className="font-display text-lg font-bold text-red-900">
-                      Recommendation Withheld Due to Safety Concerns
-                    </h2>
+              {agentId === "research" ? (
+                <>
+                  <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                    {agentTitles[agentId] || "Analysis"}
+                  </h1>
+                  <p className="text-muted-foreground mb-4">{analysis.query}</p>
+                  
+                  {/* Display selected mode */}
+                  <div className="mb-6">
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      analysis.mode === 'clinical' 
+                        ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                        : 'bg-gray-100 text-gray-800 border border-gray-300'
+                    }`}>
+                      {analysis.mode === 'clinical' ? '🏥 Clinical Mode' : '🔬 Research Mode'}
+                    </span>
                   </div>
-                  <p className="text-red-800 mb-4">
-                    {s.vetoReason || 'This intervention is not recommended for this patient based on safety analysis.'}
-                  </p>
-                  {veto.objections.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-red-200">
-                      <h3 className="font-semibold text-red-900 mb-2">Safety Objections:</h3>
-                      <ul className="space-y-2">
-                        {veto.objections.map((obj, i) => (
-                          <li key={i} className="text-sm text-red-800">
-                            <span className="font-medium">[{obj.source}]</span> {obj.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+
+                  {/* Safety-First Components - Always displayed first */}
+                  <SafetyBanner 
+                    safetyTier={safety.safetyTier} 
+                    summary={safety.plainLanguageSummary} 
+                  />
+
+                  {safety.clinicalAlerts.length > 0 && (
+                    <ClinicalAlerts alerts={safety.clinicalAlerts} />
                   )}
-                </GlassCard>
-              ) : (
-                <GlassCard className={`mb-6 ${safety.safetyTier === 'not-recommended' ? 'border-orange-300 bg-orange-50' : ''}`}>
-                  <h2 className="font-display text-lg font-bold text-foreground mb-5">
-                    {safety.safetyTier === 'not-recommended' ? '⚠️ ' : ''}Evidence Summary
-                  </h2>
-                  <div className="space-y-4">
-                    <ConfidenceBar label="Overall Confidence" value={s.overallConfidence} icon="🟡" />
-                    <ConfidenceBar label="Disagreement Level" value={s.disagreementLevel} icon="🔴" />
-                    <ConfidenceBar label="Clinical Readiness" value={s.clinicalReadiness} icon="🔺" />
-                  </div>
-                  
-                  {/* Confidence Justification */}
-                  {s.confidenceJustification && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Confidence Justification</h3>
-                      <p className="text-sm text-muted-foreground">{s.confidenceJustification}</p>
-                    </div>
+
+                  {safety.demographicGaps.length > 0 && (
+                    <DemographicGapsDisplay gaps={safety.demographicGaps} />
                   )}
-                  
-                  {/* Bias and Uncertainty */}
-                  {s.biasAndUncertainty && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Bias & Uncertainty</h3>
-                      <p className="text-sm text-muted-foreground">{s.biasAndUncertainty}</p>
-                    </div>
+
+                  {safety.alternativeOptions.length > 0 && (
+                    <AlternativeOptions alternatives={safety.alternativeOptions} />
                   )}
-                  
-                  {/* Objection Responses */}
-                  {s.objectionResponses && s.objectionResponses.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <h3 className="text-sm font-semibold text-foreground mb-3">Addressing Concerns</h3>
-                      <div className="space-y-3">
-                        {s.objectionResponses.map((resp, i) => (
-                          <div key={i} className="bg-muted/30 p-3 rounded-lg">
-                            <p className="text-sm font-medium text-foreground mb-1">
-                              <AlertTriangle className="inline w-3 h-3 mr-1" />
-                              {resp.objection}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{resp.response}</p>
-                          </div>
-                        ))}
+
+                  {s.patientExplanation && (
+                    <PatientExplanation explanation={s.patientExplanation} />
+                  )}
+
+                  {/* Recommendation Section - Conditionally rendered based on safety tier */}
+                  {isSuppressed ? (
+                    <GlassCard className="mb-6 bg-red-50 border-red-300">
+                      <div className="flex items-center gap-3 mb-3">
+                        <AlertTriangle className="text-red-600" size={24} />
+                        <h2 className="font-display text-lg font-bold text-red-900">
+                          Recommendation Withheld Due to Safety Concerns
+                        </h2>
                       </div>
-                    </div>
+                      <p className="text-red-800 mb-4">
+                        {s.vetoReason || 'This intervention is not recommended for this patient based on safety analysis.'}
+                      </p>
+                      {veto.objections.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-red-200">
+                          <h3 className="font-semibold text-red-900 mb-2">Safety Objections:</h3>
+                          <ul className="space-y-2">
+                            {veto.objections.map((obj, i) => (
+                              <li key={i} className="text-sm text-red-800">
+                                <span className="font-medium">[{obj.source}]</span> {obj.message}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </GlassCard>
+                  ) : (
+                    <GlassCard className={`mb-6 ${safety.safetyTier === 'not-recommended' ? 'border-orange-300 bg-orange-50' : ''}`}>
+                      <h2 className="font-display text-lg font-bold text-foreground mb-5">
+                        {safety.safetyTier === 'not-recommended' ? '⚠️ ' : ''}Evidence Summary
+                      </h2>
+                      <div className="space-y-4">
+                        <ConfidenceBar label="Overall Confidence" value={s.overallConfidence} icon="🟡" />
+                        <ConfidenceBar label="Disagreement Level" value={s.disagreementLevel} icon="🔴" />
+                        <ConfidenceBar label="Clinical Readiness" value={s.clinicalReadiness} icon="🔺" />
+                      </div>
+                      
+                      {/* Confidence Justification */}
+                      {s.confidenceJustification && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <h3 className="text-sm font-semibold text-foreground mb-2">Confidence Justification</h3>
+                          <p className="text-sm text-muted-foreground">{s.confidenceJustification}</p>
+                        </div>
+                      )}
+                      
+                      {/* Bias and Uncertainty */}
+                      {s.biasAndUncertainty && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <h3 className="text-sm font-semibold text-foreground mb-2">Bias & Uncertainty</h3>
+                          <p className="text-sm text-muted-foreground">{s.biasAndUncertainty}</p>
+                        </div>
+                      )}
+                      
+                      {/* Objection Responses */}
+                      {s.objectionResponses && s.objectionResponses.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <h3 className="text-sm font-semibold text-foreground mb-3">Addressing Concerns</h3>
+                          <div className="space-y-3">
+                            {s.objectionResponses.map((resp, i) => (
+                              <div key={i} className="bg-muted/30 p-3 rounded-lg">
+                                <p className="text-sm font-medium text-foreground mb-1">
+                                  <AlertTriangle className="inline w-3 h-3 mr-1" />
+                                  {resp.objection}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{resp.response}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </GlassCard>
                   )}
-                </GlassCard>
-              )}
 
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <GlassCard>
-                  <div className="flex items-center gap-2 mb-3">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    <h3 className="font-display font-semibold text-sm text-foreground">Research Agent</h3>
+                  <div className="grid md:grid-cols-3 gap-4 mb-8">
+                    <GlassCard>
+                      <div className="flex items-center gap-2 mb-3">
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        <h3 className="font-display font-semibold text-sm text-foreground">Research Agent</h3>
+                      </div>
+                      <div className="text-3xl font-bold text-foreground mb-1">{lit.totalCount}</div>
+                      <p className="text-xs text-muted-foreground mb-3">• Ranked by relevance</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{lit.rankedPapers[0]?.paper.title ?? "—"}</p>
+                      <Link to="/results/research" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
+                        View Papers →
+                      </Link>
+                    </GlassCard>
+                    <GlassCard>
+                      <div className="flex items-center gap-2 mb-3">
+                        <FlaskConical className="w-4 h-4 text-confidence-medium" />
+                        <h3 className="font-display font-semibold text-sm text-foreground">Trial Quality Agent</h3>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-foreground font-bold">RCTs: </span>
+                        <span className="text-2xl font-bold text-foreground">{tq.summary.rctCount}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">• Observational: {tq.summary.observationalCount}</p>
+                      <p className="text-xs text-muted-foreground">• Bias Risk: <span className="text-confidence-medium">{tq.summary.overallBiasRisk}</span></p>
+                      <Link to="/results/trial-quality" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
+                        Review Trials →
+                      </Link>
+                    </GlassCard>
+                    <GlassCard>
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChart3 className="w-4 h-4 text-secondary" />
+                        <h3 className="font-display font-semibold text-sm text-foreground">Statistics Agent</h3>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground mb-2">Strength: {(stats.statisticalStrength * 100).toFixed(0)}%</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{stats.explanation}</p>
+                      <Link to="/results/statistics" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
+                        Learn More →
+                      </Link>
+                    </GlassCard>
                   </div>
-                  <div className="text-3xl font-bold text-foreground mb-1">{lit.totalCount}</div>
-                  <p className="text-xs text-muted-foreground mb-3">• Ranked by relevance</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{lit.rankedPapers[0]?.paper.title ?? "—"}</p>
-                  <Link to="/results/research" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
-                    View Papers →
+                </>
+              ) : (
+                <>
+                  <Link to="/results/research" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4">
+                    <ArrowLeft className="w-4 h-4" /> Back to Overview
                   </Link>
-                </GlassCard>
-                <GlassCard>
-                  <div className="flex items-center gap-2 mb-3">
-                    <FlaskConical className="w-4 h-4 text-confidence-medium" />
-                    <h3 className="font-display font-semibold text-sm text-foreground">Trial Quality Agent</h3>
+                  <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                    {agentTitles[agentId] || "Analysis"}
+                  </h1>
+                  <p className="text-muted-foreground mb-4">{analysis.query}</p>
+                  <div className="mb-4">
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      analysis.mode === 'clinical' 
+                        ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                        : 'bg-gray-100 text-gray-800 border border-gray-300'
+                    }`}>
+                      {analysis.mode === 'clinical' ? '🏥 Clinical Mode' : '🔬 Research Mode'}
+                    </span>
                   </div>
-                  <div className="mb-2">
-                    <span className="text-foreground font-bold">RCTs: </span>
-                    <span className="text-2xl font-bold text-foreground">{tq.summary.rctCount}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">• Observational: {tq.summary.observationalCount}</p>
-                  <p className="text-xs text-muted-foreground">• Bias Risk: <span className="text-confidence-medium">{tq.summary.overallBiasRisk}</span></p>
-                  <Link to="/results/trial-quality" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
-                    Review Trials →
-                  </Link>
-                </GlassCard>
-                <GlassCard>
-                  <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="w-4 h-4 text-secondary" />
-                    <h3 className="font-display font-semibold text-sm text-foreground">Statistics Agent</h3>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground mb-2">Strength: {(stats.statisticalStrength * 100).toFixed(0)}%</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{stats.explanation}</p>
-                  <Link to="/results/statistics" className="text-xs text-primary hover:underline mt-3 inline-flex items-center gap-1">
-                    Learn More →
-                  </Link>
-                </GlassCard>
-              </div>
+                </>
+              )}
 
               {agentId === "research" && <ResearchContent analysis={analysis} />}
               {agentId === "trial-quality" && <TrialQualityContent analysis={analysis} />}
@@ -378,6 +402,7 @@ function StatisticsContent({ analysis }: { analysis: AnalyzeResponse }) {
   const comparisons = stats.outcomeComparisons?.length ? stats.outcomeComparisons : [
     { label: "Statistical strength", value: `${(stats.statisticalStrength * 100).toFixed(0)}%`, bar: stats.statisticalStrength * 100 },
   ];
+  const chartData = comparisons.map((item) => ({ name: item.label, value: item.bar }));
   return (
     <GlassCard className="space-y-4">
       <div className="flex items-center justify-between">
@@ -399,6 +424,18 @@ function StatisticsContent({ analysis }: { analysis: AnalyzeResponse }) {
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-6">
+        <h4 className="text-sm font-medium text-foreground mb-3">Trend Visualization</h4>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6' }} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </GlassCard>
   );

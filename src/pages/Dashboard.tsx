@@ -7,6 +7,8 @@ import AgentSidebar from "@/components/AgentSidebar";
 import { ModeSelector } from "@/components/ModeSelector";
 import { PatientProfileForm } from "@/components/PatientProfileForm";
 import { analyzeSearch, type AnalysisMode, type PatientProfile } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveAnalysis } from "@/lib/database";
 
 const Dashboard = () => {
   const [query, setQuery] = useState("");
@@ -17,6 +19,7 @@ const Dashboard = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const validatePatientProfile = (): boolean => {
     const errors: Record<string, string> = {};
@@ -56,6 +59,21 @@ const Dashboard = () => {
         mode,
         patient: (mode === 'clinical' || Object.keys(patient).length > 0) ? patient as PatientProfile : undefined
       });
+      
+      // Save analysis to database if user is logged in
+      if (user) {
+        try {
+          const { error: saveError } = await saveAnalysis(user.id, result);
+          if (saveError) {
+            console.error('Failed to save analysis:', saveError);
+            // Don't block navigation on save error
+          }
+        } catch (saveErr) {
+          console.error('Exception saving analysis:', saveErr);
+          // Silently fail - don't block user flow
+        }
+      }
+      
       navigate("/results/research?q=" + encodeURIComponent(q), { state: { analysis: result } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed. Is the backend running on port 3001?");
