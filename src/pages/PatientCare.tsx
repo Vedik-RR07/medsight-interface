@@ -6,59 +6,77 @@ import { Heart, MessageCircle, FileText, Download, Loader2, Calendar, AlertCircl
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRecentAnalyses, type SavedAnalysis } from "@/lib/database";
+import { getStoredAnalyses, type StoredAnalysis } from "@/lib/sessionStorage";
 import { toast } from "sonner";
+import type { AnalyzeResponse } from "@/lib/api";
 
 const PatientCare = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [recentAnalyses, setRecentAnalyses] = useState<SavedAnalysis[]>([]);
+  const [recentAnalyses, setRecentAnalyses] = useState<Array<StoredAnalysis | SavedAnalysis>>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalyzeResponse | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [showDiscussion, setShowDiscussion] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadRecentAnalyses();
-    } else {
-      setLoading(false);
-    }
+    loadRecentAnalyses();
   }, [user]);
 
   const loadRecentAnalyses = async () => {
-    if (!user) return;
-    
     setLoading(true);
     try {
-      const { data, error } = await getRecentAnalyses(user.id, 5);
+      // Always load from session storage first (works without database)
+      const sessionAnalyses = getStoredAnalyses();
       
-      if (error) {
-        console.error('Error loading analyses:', error);
-        // Don't show error toast - just log it
-        // This allows the page to work even if database isn't set up yet
-      } else if (data) {
-        setRecentAnalyses(data);
+      // Try to load from database if user is logged in
+      if (user) {
+        const { data, error } = await getRecentAnalyses(user.id, 5);
+        
+        if (!error && data && data.length > 0) {
+          // Merge database and session analyses, preferring database
+          const dbIds = new Set(data.map(d => d.query + d.created_at));
+          const uniqueSession = sessionAnalyses.filter(
+            s => !dbIds.has(s.analysis.query + s.timestamp)
+          );
+          setRecentAnalyses([...data, ...uniqueSession]);
+        } else {
+          // Use session storage only
+          setRecentAnalyses(sessionAnalyses);
+        }
+      } else {
+        // Not logged in, use session storage only
+        setRecentAnalyses(sessionAnalyses);
       }
     } catch (err) {
       console.error('Failed to load analyses:', err);
-      // Silently fail - page still works without database
+      // Fallback to session storage
+      setRecentAnalyses(getStoredAnalyses());
     } finally {
       setLoading(false);
     }
   };
 
-  const generatePlainLanguageReport = (analysis: SavedAnalysis) => {
-    setSelectedAnalysis(analysis);
+  const generatePlainLanguageReport = (analysis: StoredAnalysis | SavedAnalysis) => {
+    // Extract the AnalyzeResponse from either type
+    const analyzeResponse = 'analysis' in analysis ? analysis.analysis : analysis.full_results;
+    setSelectedAnalysis(analyzeResponse);
     setShowReport(true);
   };
 
-  const generateDiscussionPoints = (analysis: SavedAnalysis) => {
-    setSelectedAnalysis(analysis);
+  const generateDiscussionPoints = (analysis: StoredAnalysis | SavedAnalysis) => {
+    // Extract the AnalyzeResponse from either type
+    const analyzeResponse = 'analysis' in analysis ? analysis.analysis : analysis.full_results;
+    setSelectedAnalysis(analyzeResponse);
     setShowDiscussion(true);
   };
 
   const downloadReport = () => {
     if (!selectedAnalysis) return;
+
+    const patientAge = selectedAnalysis.mode === 'clinical' ? 'N/A' : 'N/A';
+    const patientSex = selectedAnalysis.mode === 'clinical' ? 'N/A' : 'N/A';
+    const patientCondition = selectedAnalysis.mode === 'clinical' ? 'N/A' : 'N/A';
 
     const report = `
 PATIENT-FRIENDLY MEDICAL RESEARCH SUMMARY
@@ -66,28 +84,28 @@ Generated: ${new Date().toLocaleDateString()}
 
 Research Question: ${selectedAnalysis.query}
 
-${selectedAnalysis.patient_condition ? `Patient Profile:
-- Age: ${selectedAnalysis.patient_age} years
-- Sex: ${selectedAnalysis.patient_sex}
-- Condition: ${selectedAnalysis.patient_condition}
+${selectedAnalysis.mode === 'clinical' ? `Patient Profile:
+- Age: ${patientAge} years
+- Sex: ${patientSex}
+- Condition: ${patientCondition}
 ` : ''}
 
 WHAT WE FOUND:
-${selectedAnalysis.full_results.synthesis.patientExplanation || selectedAnalysis.summary}
+${selectedAnalysis.synthesis.patientExplanation || selectedAnalysis.synthesis.summary}
 
 SAFETY ASSESSMENT:
-${selectedAnalysis.safety_tier ? `Safety Level: ${selectedAnalysis.safety_tier.toUpperCase()}` : 'General research summary'}
+${selectedAnalysis.patientSafety?.safetyTier ? `Safety Level: ${selectedAnalysis.patientSafety.safetyTier.toUpperCase()}` : 'General research summary'}
 
-${selectedAnalysis.full_results.patientSafety?.plainLanguageSummary || ''}
+${selectedAnalysis.patientSafety?.plainLanguageSummary || ''}
 
 KEY POINTS:
-${selectedAnalysis.full_results.synthesis.keyFindings.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+${selectedAnalysis.synthesis.keyFindings.map((f, i) => `${i + 1}. ${f}`).join('\n')}
 
-CONFIDENCE LEVEL: ${selectedAnalysis.confidence}%
+CONFIDENCE LEVEL: ${selectedAnalysis.synthesis.overallConfidence}%
 
-${selectedAnalysis.full_results.synthesis.biasAndUncertainty ? `
+${selectedAnalysis.synthesis.biasAndUncertainty ? `
 IMPORTANT CONSIDERATIONS:
-${selectedAnalysis.full_results.synthesis.biasAndUncertainty}
+${selectedAnalysis.synthesis.biasAndUncertainty}
 ` : ''}
 
 ---
@@ -99,7 +117,7 @@ Always consult with your healthcare provider before making any medical decisions
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `patient-report-${selectedAnalysis.id.slice(0, 8)}.txt`;
+    a.download = `patient-report-${Date.now()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -175,14 +193,7 @@ Always consult with your healthcare provider before making any medical decisions
               {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
             </div>
 
-            {!user ? (
-              <div className="p-6 text-center">
-                <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Please sign in to view your saved analyses
-                </p>
-              </div>
-            ) : loading ? (
+            {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="p-4 rounded-lg bg-muted/30 animate-pulse h-20" />
@@ -203,53 +214,63 @@ Always consult with your healthcare provider before making any medical decisions
               </div>
             ) : (
               <div className="space-y-3">
-                {recentAnalyses.map((analysis) => (
-                  <div
-                    key={analysis.id}
-                    className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition group"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-foreground group-hover:text-primary transition">
-                          {analysis.query}
-                        </h4>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(analysis.created_at)}
-                          </span>
-                          {analysis.safety_tier && (
-                            <span className={`font-medium ${getSafetyColor(analysis.safety_tier)}`}>
-                              {analysis.safety_tier.replace('-', ' ').toUpperCase()}
+                {recentAnalyses.map((analysis) => {
+                  // Handle both StoredAnalysis and SavedAnalysis types
+                  const isStored = 'analysis' in analysis;
+                  const query = isStored ? analysis.analysis.query : analysis.query;
+                  const timestamp = isStored ? analysis.timestamp : analysis.created_at;
+                  const safetyTier = isStored ? analysis.analysis.patientSafety?.safetyTier : analysis.safety_tier;
+                  const confidence = isStored ? analysis.analysis.synthesis.overallConfidence : analysis.confidence;
+                  const id = isStored ? analysis.id : analysis.id;
+                  
+                  return (
+                    <div
+                      key={id}
+                      className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition group"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground group-hover:text-primary transition">
+                            {query}
+                          </h4>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(timestamp)}
                             </span>
-                          )}
-                          <span>Confidence: {analysis.confidence}%</span>
+                            {safetyTier && (
+                              <span className={`font-medium ${getSafetyColor(safetyTier)}`}>
+                                {safetyTier.replace('-', ' ').toUpperCase()}
+                              </span>
+                            )}
+                            <span>Confidence: {confidence}%</span>
+                          </div>
                         </div>
                       </div>
+                      
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generatePlainLanguageReport(analysis);
+                          }}
+                          className="px-3 py-1.5 bg-primary/20 text-primary rounded-md hover:bg-primary/30 transition text-xs font-medium"
+                        >
+                          Generate Report
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generateDiscussionPoints(analysis);
+                          }}
+                          className="px-3 py-1.5 bg-secondary/20 text-secondary-foreground rounded-md hover:bg-secondary/30 transition text-xs font-medium"
+                        >
+                          Discussion Points
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          generatePlainLanguageReport(analysis);
-                        }}
-                        className="px-3 py-1.5 bg-primary/20 text-primary rounded-md hover:bg-primary/30 transition text-xs font-medium"
-                      >
-                        Generate Report
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          generateDiscussionPoints(analysis);
-                        }}
-                        className="px-3 py-1.5 bg-secondary/20 text-secondary-foreground rounded-md hover:bg-secondary/30 transition text-xs font-medium"
-                      >
-                        Discussion Points
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </GlassCard>
@@ -278,32 +299,28 @@ Always consult with your healthcare provider before making any medical decisions
                     <p className="text-muted-foreground">{selectedAnalysis.query}</p>
                   </div>
 
-                  {selectedAnalysis.patient_condition && (
+                  {selectedAnalysis.mode === 'clinical' && (
                     <div>
                       <h3 className="font-semibold text-foreground mb-2">Patient Profile:</h3>
-                      <ul className="text-muted-foreground space-y-1">
-                        <li>• Age: {selectedAnalysis.patient_age} years</li>
-                        <li>• Sex: {selectedAnalysis.patient_sex}</li>
-                        <li>• Condition: {selectedAnalysis.patient_condition}</li>
-                      </ul>
+                      <p className="text-muted-foreground text-sm">Clinical mode analysis</p>
                     </div>
                   )}
 
                   <div>
                     <h3 className="font-semibold text-foreground mb-2">What We Found:</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {selectedAnalysis.full_results.synthesis.patientExplanation || selectedAnalysis.summary}
+                      {selectedAnalysis.synthesis.patientExplanation || selectedAnalysis.synthesis.summary}
                     </p>
                   </div>
 
-                  {selectedAnalysis.safety_tier && (
+                  {selectedAnalysis.patientSafety?.safetyTier && (
                     <div>
                       <h3 className="font-semibold text-foreground mb-2">Safety Assessment:</h3>
-                      <p className={`font-medium ${getSafetyColor(selectedAnalysis.safety_tier)}`}>
-                        {selectedAnalysis.safety_tier.replace('-', ' ').toUpperCase()}
+                      <p className={`font-medium ${getSafetyColor(selectedAnalysis.patientSafety.safetyTier)}`}>
+                        {selectedAnalysis.patientSafety.safetyTier.replace('-', ' ').toUpperCase()}
                       </p>
                       <p className="text-muted-foreground mt-1">
-                        {selectedAnalysis.full_results.patientSafety?.plainLanguageSummary}
+                        {selectedAnalysis.patientSafety.plainLanguageSummary}
                       </p>
                     </div>
                   )}
@@ -311,7 +328,7 @@ Always consult with your healthcare provider before making any medical decisions
                   <div>
                     <h3 className="font-semibold text-foreground mb-2">Key Points:</h3>
                     <ul className="text-muted-foreground space-y-2">
-                      {selectedAnalysis.full_results.synthesis.keyFindings.map((finding, i) => (
+                      {selectedAnalysis.synthesis.keyFindings.map((finding, i) => (
                         <li key={i}>• {finding}</li>
                       ))}
                     </ul>
@@ -370,7 +387,7 @@ Always consult with your healthcare provider before making any medical decisions
                   <div>
                     <h3 className="font-semibold text-foreground mb-3">Questions to Ask Your Doctor:</h3>
                     <ul className="space-y-3">
-                      {selectedAnalysis.full_results.patientSafety?.questionsForClinician.map((q, i) => (
+                      {selectedAnalysis.patientSafety?.questionsForClinician.map((q, i) => (
                         <li key={i} className="p-3 bg-muted/30 rounded-lg text-muted-foreground">
                           {i + 1}. {q}
                         </li>
@@ -378,12 +395,12 @@ Always consult with your healthcare provider before making any medical decisions
                     </ul>
                   </div>
 
-                  {selectedAnalysis.full_results.synthesis.objectionResponses && 
-                   selectedAnalysis.full_results.synthesis.objectionResponses.length > 0 && (
+                  {selectedAnalysis.synthesis.objectionResponses && 
+                   selectedAnalysis.synthesis.objectionResponses.length > 0 && (
                     <div>
                       <h3 className="font-semibold text-foreground mb-3">Important Considerations:</h3>
                       <ul className="space-y-3">
-                        {selectedAnalysis.full_results.synthesis.objectionResponses.map((resp, i) => (
+                        {selectedAnalysis.synthesis.objectionResponses.map((resp, i) => (
                           <li key={i} className="p-3 bg-muted/30 rounded-lg">
                             <p className="font-medium text-foreground mb-1">{resp.objection}</p>
                             <p className="text-muted-foreground text-xs">{resp.response}</p>
@@ -399,14 +416,14 @@ Always consult with your healthcare provider before making any medical decisions
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: `${selectedAnalysis.confidence}%` }}
+                          style={{ width: `${selectedAnalysis.synthesis.overallConfidence}%` }}
                         />
                       </div>
-                      <span className="text-foreground font-medium">{selectedAnalysis.confidence}%</span>
+                      <span className="text-foreground font-medium">{selectedAnalysis.synthesis.overallConfidence}%</span>
                     </div>
-                    {selectedAnalysis.full_results.synthesis.confidenceJustification && (
+                    {selectedAnalysis.synthesis.confidenceJustification && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        {selectedAnalysis.full_results.synthesis.confidenceJustification}
+                        {selectedAnalysis.synthesis.confidenceJustification}
                       </p>
                     )}
                   </div>

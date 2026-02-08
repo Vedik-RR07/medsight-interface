@@ -9,6 +9,7 @@ import { PatientProfileForm } from "@/components/PatientProfileForm";
 import { analyzeSearch, type AnalysisMode, type PatientProfile } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveAnalysis } from "@/lib/database";
+import { saveAnalysisToSession } from "@/lib/sessionStorage";
 
 const Dashboard = () => {
   const [query, setQuery] = useState("");
@@ -60,7 +61,10 @@ const Dashboard = () => {
         patient: (mode === 'clinical' || Object.keys(patient).length > 0) ? patient as PatientProfile : undefined
       });
       
-      // Save analysis to database if user is logged in
+      // Always save to session storage for immediate access
+      saveAnalysisToSession(result);
+      
+      // Also try to save to database if user is logged in
       if (user) {
         try {
           const { error: saveError } = await saveAnalysis(user.id, result);
