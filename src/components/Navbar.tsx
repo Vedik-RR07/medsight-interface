@@ -1,6 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import MedSightLogo from "./MedSightLogo";
-import { User } from "lucide-react";
+import { User, LogOut } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "Analysis", path: "/dashboard" },
@@ -11,6 +18,14 @@ const navItems = [
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const displayName = user?.email ?? user?.user_metadata?.full_name ?? "User";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -36,10 +51,24 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center border border-border cursor-pointer hover:border-primary/30 transition-colors">
-            <User className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <span className="text-sm text-muted-foreground hidden md:block">Dr. A. Collins</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-full border border-border hover:border-primary/30 transition-colors p-1 pr-3">
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <span className="text-sm text-muted-foreground max-w-[140px] truncate hidden md:block">
+                  {displayName}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>
