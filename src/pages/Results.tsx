@@ -6,6 +6,11 @@ import Navbar from "@/components/Navbar";
 import AgentSidebar from "@/components/AgentSidebar";
 import ConfidenceBar from "@/components/ConfidenceBar";
 import GlassCard from "@/components/GlassCard";
+import { SafetyBanner } from "@/components/SafetyBanner";
+import { ClinicalAlerts } from "@/components/ClinicalAlerts";
+import { DemographicGapsDisplay } from "@/components/DemographicGapsDisplay";
+import { PatientExplanation } from "@/components/PatientExplanation";
+import { AlternativeOptions } from "@/components/AlternativeOptions";
 import { analyzeSearch, type AnalyzeResponse } from "@/lib/api";
 
 const agentTitles: Record<string, string> = {
@@ -98,6 +103,11 @@ const Results = () => {
   const tq = analysis.trialQuality;
   const stats = analysis.statistics;
   const pm = analysis.patientMatch;
+  const safety = analysis.patientSafety;
+  const veto = analysis.vetoStatus;
+
+  // Determine if recommendation should be suppressed
+  const isSuppressed = safety.safetyTier === 'contraindicated' || safety.safetyTier === 'not-recommended';
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,16 +128,112 @@ const Results = () => {
               <h1 className="font-display text-3xl font-bold text-foreground mb-2">
                 {agentTitles[agentId] || "Analysis"}
               </h1>
-              <p className="text-muted-foreground mb-8">{analysis.query}</p>
+              <p className="text-muted-foreground mb-4">{analysis.query}</p>
+              
+              {/* Display selected mode */}
+              <div className="mb-6">
+                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                  analysis.mode === 'clinical' 
+                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                    : 'bg-gray-100 text-gray-800 border border-gray-300'
+                }`}>
+                  {analysis.mode === 'clinical' ? '🏥 Clinical Mode' : '🔬 Research Mode'}
+                </span>
+              </div>
 
-              <GlassCard className="mb-6">
-                <h2 className="font-display text-lg font-bold text-foreground mb-5">Evidence Summary</h2>
-                <div className="space-y-4">
-                  <ConfidenceBar label="Overall Confidence" value={s.overallConfidence} icon="🟡" />
-                  <ConfidenceBar label="Disagreement Level" value={s.disagreementLevel} icon="🔴" />
-                  <ConfidenceBar label="Clinical Readiness" value={s.clinicalReadiness} icon="🔺" />
-                </div>
-              </GlassCard>
+              {/* Safety-First Components - Always displayed first */}
+              <SafetyBanner 
+                safetyTier={safety.safetyTier} 
+                summary={safety.plainLanguageSummary} 
+              />
+
+              {safety.clinicalAlerts.length > 0 && (
+                <ClinicalAlerts alerts={safety.clinicalAlerts} />
+              )}
+
+              {safety.demographicGaps.length > 0 && (
+                <DemographicGapsDisplay gaps={safety.demographicGaps} />
+              )}
+
+              {safety.alternativeOptions.length > 0 && (
+                <AlternativeOptions alternatives={safety.alternativeOptions} />
+              )}
+
+              {s.patientExplanation && (
+                <PatientExplanation explanation={s.patientExplanation} />
+              )}
+
+              {/* Recommendation Section - Conditionally rendered based on safety tier */}
+              {isSuppressed ? (
+                <GlassCard className="mb-6 bg-red-50 border-red-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <AlertTriangle className="text-red-600" size={24} />
+                    <h2 className="font-display text-lg font-bold text-red-900">
+                      Recommendation Withheld Due to Safety Concerns
+                    </h2>
+                  </div>
+                  <p className="text-red-800 mb-4">
+                    {s.vetoReason || 'This intervention is not recommended for this patient based on safety analysis.'}
+                  </p>
+                  {veto.objections.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-red-200">
+                      <h3 className="font-semibold text-red-900 mb-2">Safety Objections:</h3>
+                      <ul className="space-y-2">
+                        {veto.objections.map((obj, i) => (
+                          <li key={i} className="text-sm text-red-800">
+                            <span className="font-medium">[{obj.source}]</span> {obj.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </GlassCard>
+              ) : (
+                <GlassCard className={`mb-6 ${safety.safetyTier === 'not-recommended' ? 'border-orange-300 bg-orange-50' : ''}`}>
+                  <h2 className="font-display text-lg font-bold text-foreground mb-5">
+                    {safety.safetyTier === 'not-recommended' ? '⚠️ ' : ''}Evidence Summary
+                  </h2>
+                  <div className="space-y-4">
+                    <ConfidenceBar label="Overall Confidence" value={s.overallConfidence} icon="🟡" />
+                    <ConfidenceBar label="Disagreement Level" value={s.disagreementLevel} icon="🔴" />
+                    <ConfidenceBar label="Clinical Readiness" value={s.clinicalReadiness} icon="🔺" />
+                  </div>
+                  
+                  {/* Confidence Justification */}
+                  {s.confidenceJustification && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Confidence Justification</h3>
+                      <p className="text-sm text-muted-foreground">{s.confidenceJustification}</p>
+                    </div>
+                  )}
+                  
+                  {/* Bias and Uncertainty */}
+                  {s.biasAndUncertainty && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Bias & Uncertainty</h3>
+                      <p className="text-sm text-muted-foreground">{s.biasAndUncertainty}</p>
+                    </div>
+                  )}
+                  
+                  {/* Objection Responses */}
+                  {s.objectionResponses && s.objectionResponses.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <h3 className="text-sm font-semibold text-foreground mb-3">Addressing Concerns</h3>
+                      <div className="space-y-3">
+                        {s.objectionResponses.map((resp, i) => (
+                          <div key={i} className="bg-muted/30 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-foreground mb-1">
+                              <AlertTriangle className="inline w-3 h-3 mr-1" />
+                              {resp.objection}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{resp.response}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </GlassCard>
+              )}
 
               <div className="grid md:grid-cols-3 gap-4 mb-8">
                 <GlassCard>

@@ -4,23 +4,58 @@ import { motion } from "framer-motion";
 import { Search, SlidersHorizontal, Sparkles, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AgentSidebar from "@/components/AgentSidebar";
-import { analyzeSearch } from "@/lib/api";
+import { ModeSelector } from "@/components/ModeSelector";
+import { PatientProfileForm } from "@/components/PatientProfileForm";
+import { analyzeSearch, type AnalysisMode, type PatientProfile } from "@/lib/api";
 
 const Dashboard = () => {
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<AnalysisMode>('research');
+  const [patient, setPatient] = useState<Partial<PatientProfile>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const validatePatientProfile = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (mode === 'clinical') {
+      if (!patient.age || patient.age < 0 || patient.age > 120) {
+        errors.age = 'Age is required and must be between 0 and 120';
+      }
+      if (!patient.sex) {
+        errors.sex = 'Sex is required in clinical mode';
+      }
+      if (!patient.primaryCondition || patient.primaryCondition.trim() === '') {
+        errors.primaryCondition = 'Primary condition is required in clinical mode';
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSearch = async (queryOverride?: string) => {
     const q = (queryOverride ?? query).trim();
     if (!q) return;
+    
+    // Validate patient profile if in clinical mode
+    if (!validatePatientProfile()) {
+      setError('Please complete all required patient profile fields for clinical mode');
+      return;
+    }
+    
     if (!queryOverride) setQuery(q);
     setError(null);
     setAnalyzing(true);
     try {
-      const result = await analyzeSearch({ query: q });
+      const result = await analyzeSearch({ 
+        query: q, 
+        mode,
+        patient: (mode === 'clinical' || Object.keys(patient).length > 0) ? patient as PatientProfile : undefined
+      });
       navigate("/results/research?q=" + encodeURIComponent(q), { state: { analysis: result } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed. Is the backend running on port 3001?");
@@ -44,6 +79,17 @@ const Dashboard = () => {
             <p className="text-muted-foreground mb-8">
               Search medical research, conditions, trials, or patient scenarios
             </p>
+
+            {/* Mode Selector */}
+            <ModeSelector mode={mode} onChange={setMode} />
+
+            {/* Patient Profile Form */}
+            <PatientProfileForm 
+              mode={mode} 
+              patient={patient} 
+              onChange={setPatient}
+              errors={validationErrors}
+            />
 
             <div className="glass-panel-strong p-2 flex items-center gap-2">
               <Search className="w-5 h-5 text-muted-foreground ml-4" />

@@ -3,6 +3,11 @@
  */
 const API_BASE = "http://localhost:3001";
 
+// Analysis mode types
+export type AnalysisMode = 'clinical' | 'research';
+export type SafetyTier = 'safe' | 'caution' | 'not-recommended' | 'contraindicated';
+
+// Legacy patient params (for backwards compatibility)
 export interface PatientParams {
   ageRange?: { min?: number; max?: number };
   sex?: string;
@@ -10,9 +15,66 @@ export interface PatientParams {
   comorbidities?: string[];
 }
 
+// New patient profile for clinical mode
+export interface PatientProfile {
+  age: number;
+  sex: 'male' | 'female' | 'other';
+  primaryCondition: string;
+  comorbidities?: string[];
+  medications?: string[];
+}
+
+// Safety-first types
+export interface ClinicalAlert {
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  citations: string[];
+  category: 'contraindication' | 'exclusion' | 'demographic' | 'interaction';
+}
+
+export interface ExclusionMatch {
+  criterion: string;
+  patientMatch: string;
+  paperId: string;
+  severity: 'absolute' | 'relative';
+}
+
+export interface DemographicGap {
+  type: 'age' | 'sex' | 'comorbidity' | 'geographic';
+  patientValue: string | number;
+  studyValue: string | number;
+  severity: 'minor' | 'moderate' | 'severe';
+  explanation: string;
+  impact: string;
+}
+
+export interface Objection {
+  source: 'safety' | 'quality' | 'statistics';
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  details?: string;
+}
+
+export interface VetoStatus {
+  type: 'none' | 'soft' | 'hard';
+  reason: string;
+  objections: Objection[];
+}
+
+export interface PatientSafetyAgentOutput {
+  safetyTier: SafetyTier;
+  clinicalAlerts: ClinicalAlert[];
+  exclusionMatches: ExclusionMatch[];
+  demographicGaps: DemographicGap[];
+  alternativeOptions: string[];
+  plainLanguageSummary: string;
+  questionsForClinician: string[];
+}
+
 export interface AnalyzeRequestBody {
   query: string;
-  patient?: PatientParams;
+  mode: AnalysisMode;
+  patient?: PatientProfile;
 }
 
 export interface NormalizedPaper {
@@ -31,6 +93,7 @@ export interface NormalizedPaper {
 /** Mirrors backend AnalyzeResponse for type-safe rendering. */
 export interface AnalyzeResponse {
   query: string;
+  mode: AnalysisMode;
   papers: NormalizedPaper[];
   literature: {
     rankedPapers: Array<{ paper: NormalizedPaper; relevanceScore: number; reason?: string }>;
@@ -66,6 +129,7 @@ export interface AnalyzeResponse {
     plainLanguageSummary?: string;
     questionsForDoctor?: string[];
   };
+  patientSafety: PatientSafetyAgentOutput;
   synthesis: {
     summary: string;
     overallConfidence: number;
@@ -74,7 +138,21 @@ export interface AnalyzeResponse {
     conflictingEvidence?: string;
     keyFindings: string[];
     keyCitations: string[];
+    // New safety-first fields
+    clinicianSummary: string;
+    patientExplanation: string;
+    supportingEvidence: string[];
+    contradictingEvidence: string[];
+    objectionResponses: Array<{
+      objection: string;
+      response: string;
+    }>;
+    confidenceJustification: string;
+    biasAndUncertainty: string;
+    vetoApplied: boolean;
+    vetoReason?: string;
   };
+  vetoStatus: VetoStatus;
 }
 
 export async function analyzeSearch(body: AnalyzeRequestBody): Promise<AnalyzeResponse> {
