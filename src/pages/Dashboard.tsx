@@ -27,7 +27,7 @@ const Dashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             className="max-w-3xl mx-auto mt-16"
           >
-            <h1 className="font-display text-4xl font-bold text-foreground mb-2">Search...</h1>
+            <h1 className="font-display text-4xl font-bold text-foreground mb-2">What research are you looking for today?</h1>
             <p className="text-muted-foreground mb-8">
               Search medical research, conditions, trials, or patient scenarios
             </p>
