@@ -15,7 +15,7 @@ function getClient(): GoogleGenerativeAI {
 export async function generateJson<T = object>(
   systemPrompt: string,
   userPrompt: string,
-  model = "gemini-1.5-flash"
+  model = "gemini-2.5-flash-lite"
 ): Promise<T | null> {
   const gen = getClient().getGenerativeModel({ model });
   const fullPrompt = `${systemPrompt}\n\nRespond with only valid JSON, no markdown or extra text.\n\n${userPrompt}`;
@@ -31,7 +31,7 @@ export async function generateJson<T = object>(
 }
 
 /** Plain text generation when JSON is not required. */
-export async function generateText(prompt: string, model = "gemini-1.5-flash"): Promise<string> {
+export async function generateText(prompt: string, model = "gemini-2.5-flash-lite"): Promise<string> {
   const gen = getClient().getGenerativeModel({ model });
   const result = await gen.generateContent(prompt);
   return result.response.text() ?? "";
